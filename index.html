@@ -3,9 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Painel de Acompanhamentos</title>
+<title>Painel de Acompanhamento</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
   /* ==========================================================================
      TOKENS — paleta "livro-razão": papel + tinta-marinho + selo de latão
@@ -116,6 +117,8 @@
   .barra-busca{ display:flex; align-items:center; gap:10px; margin-bottom:12px; }
   .barra-busca input{ flex:1; max-width:480px; }
   .contagem-busca{ font-size:12px; color:var(--ink-soft); font-family:'IBM Plex Mono', monospace; }
+  .barra-filtros{ display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+  .barra-filtros select{ font-size:13px; padding:7px 10px; max-width:220px; }
   .ferramenta-historico{ display:flex; gap:8px; margin-top:-4px; flex-wrap:wrap; }
   .ferramenta-historico input{ flex:1; min-width:160px; }
   .ferramenta-historico select{ flex:0 0 auto; min-width:160px; }
@@ -138,25 +141,41 @@
     border:2px double var(--accent); border-radius:50%; color:var(--accent-deep);
     font-family:'IBM Plex Mono', monospace; font-size:22px; font-weight:600; transform:rotate(-4deg);
   }
+  .selo-kpi-fracao{
+    min-width:64px; height:64px; margin:0 auto 8px; display:flex; align-items:center; justify-content:center;
+    border:2px double var(--accent); border-radius:40px; color:var(--accent-deep); padding:0 12px;
+    font-family:'IBM Plex Mono', monospace; font-size:16px; font-weight:600; white-space:nowrap;
+  }
   .rotulo-kpi{ font-size:13px; color:var(--ink-soft); font-weight:500; }
   .cartao-grafico{ background:var(--card); border:1px solid var(--rule); border-radius:var(--raio); padding:18px 20px; margin-bottom:16px; box-shadow:var(--sombra); }
   .cartao-grafico h3{ font-size:15px; margin-bottom:12px; }
+  .legenda-fracoes{ font-size:11px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.06em; margin:-6px 0 10px; }
+  .lista-fracoes{ display:flex; flex-direction:column; gap:7px; max-width:420px; }
+  .linha-fracao{ display:flex; align-items:baseline; justify-content:space-between; gap:14px; font-size:13.5px; padding-bottom:6px; border-bottom:1px dashed var(--paper-deep); }
+  .rotulo-fracao{ color:var(--ink); }
+  .valor-fracao{ font-weight:600; color:var(--accent-deep); white-space:nowrap; }
   .svg-grafico{ width:100%; max-width:440px; height:auto; }
   .rotulo-grafico{ font-family:'IBM Plex Sans',sans-serif; font-size:11px; fill:var(--ink-soft); }
   .valor-grafico{ font-family:'IBM Plex Mono',monospace; font-size:11px; fill:var(--ink); }
 
   /* ---------- TABELA ---------- */
   .area-tabela{ background:var(--card); border:1px solid var(--rule); border-radius:var(--raio); overflow:auto; box-shadow:var(--sombra); }
-  table.tabela-ledger{ width:100%; border-collapse:collapse; font-size:13.5px; }
+  table.tabela-ledger{ width:100%; border-collapse:collapse; font-size:13.5px; table-layout:fixed; }
   .tabela-ledger th{
     text-align:left; padding:11px 14px; background:var(--paper-deep); color:var(--ink-soft);
     font-size:11px; text-transform:uppercase; letter-spacing:.06em; border-bottom:1px solid var(--rule); white-space:nowrap;
   }
-  .tabela-ledger td{ padding:10px 14px; border-bottom:1px solid var(--paper-deep); vertical-align:top; }
+  .tabela-ledger td{ padding:10px 14px; border-bottom:1px solid var(--paper-deep); vertical-align:top; word-wrap:break-word; overflow-wrap:anywhere; }
   .tabela-ledger tr:hover td{ background:rgba(189,138,46,0.05); }
   .tabela-ledger td.vazio{ text-align:center; color:var(--ink-soft); padding:26px; }
   .vazio-inline{ color:#B7AF98; }
-  .texto-longo-celula{ white-space:pre-wrap; display:inline-block; max-width:340px; line-height:1.45; }
+  .texto-longo-celula{ white-space:pre-wrap; display:inline-block; max-width:100%; line-height:1.45; }
+  .lista-acoes{ display:flex; flex-direction:column; gap:5px; max-width:100%; }
+  .linha-acao{ display:flex; gap:7px; align-items:flex-start; line-height:1.45; }
+  .carimbo-data-acao{ flex:0 0 auto; font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--ink-soft); white-space:nowrap; padding-top:1px; }
+  .texto-acao{ flex:1 1 auto; min-width:0; }
+  .link-ver-mais{ display:block; background:none; border:none; color:var(--accent-deep); font-size:12px; font-weight:600; text-decoration:underline; padding:4px 0 0; cursor:pointer; }
+  .link-ver-mais:hover{ color:var(--accent); }
   .celula-acoes{ white-space:nowrap; text-align:right; }
   .botao-icone{ background:none; border:1px solid var(--rule); border-radius:5px; padding:4px 8px; margin-left:4px; font-size:13px; }
   .botao-icone:hover{ background:var(--paper-deep); }
@@ -189,23 +208,23 @@
 <script>
 /* ============================================================================
    CONFIGURAÇÃO
-   - Se CONFIG.API_URL estiver vazio, o painel roda sozinho em MODO
+   - Se CONFIG.SUPABASE_URL estiver vazio, o painel roda sozinho em MODO
      DEMONSTRAÇÃO com dados de exemplo guardados em variáveis JavaScript
      (nunca em localStorage/sessionStorage), só durante esta sessão.
-   - Para ligar à planilha de verdade, publique o Code.gs como Web App e
-     cole a URL aqui (veja o GUIA_DE_CONFIGURACAO.md).
+   - Para ligar ao banco de verdade, rode o supabase_schema.sql no seu
+     projeto Supabase e cole a URL + a chave "anon public" aqui
+     (veja o GUIA_SUPABASE.md).
    ========================================================================== */
 const CONFIG = {
-  API_URL: 'https://script.google.com/macros/s/AKfycbzAAEnhHT3mJi3ZQf6Yp2XT1FEvpyiwJGXAlfsUDRUHePHs4zaVIlkJXpAY57Zmkh5i/exec', // <<< cole aqui a URL do seu Web App do Apps Script
+  SUPABASE_URL: 'https://clgawvdxktmlhzqqhhzo.supabase.co',
+  SUPABASE_ANON_KEY: 'sb_publishable__3XFD02NvfTE4QI_sESPjQ_NuctMS58',
   INTERVALOS_AUTO: [1, 5, 10]
 };
 
 /* ============================================================================
-   MODO DEMONSTRAÇÃO — "planilha" fictícia em memória (array de arrays,
-   igual ao que getDataRange().getValues() devolveria no Apps Script).
-   Isso existe só para o painel funcionar sozinho, com duplo clique, sem
-   nenhum backend. Troque à vontade para testar a adaptação automática:
-   adicione uma coluna aqui e ela aparece sozinha no painel.
+   MODO DEMONSTRAÇÃO — banco fictício em memória (mesma forma do banco real
+   no Supabase: usuários, opções por categoria e os registros do
+   acompanhamento), só para o painel funcionar sozinho, sem nenhum backend.
    ========================================================================== */
 function gerarUuid(){
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c){
@@ -215,186 +234,285 @@ function gerarUuid(){
 }
 
 let DEMO_DB = {
-  Acompanhamento: [
-    ['ID','Assunto','SubAssunto','Situação','Responsável','Data','Plano de Ação'],
-    [gerarUuid(),'Compliance','Obrigações','Em andamento','Ana Souza','2026-08-15','Revisar checklist regulatório do trimestre e enviar relatório de conformidade à diretoria.'],
-    [gerarUuid(),'Financeiro','Obrigações','Pendente','Carlos Lima','2026-08-02','Levantar guias de recolhimento em atraso e reunir com o financeiro para regularização.'],
-    [gerarUuid(),'Jurídico','Contratos','Atrasado','Beatriz Rocha','2026-07-20','Renegociar cláusulas do contrato com o fornecedor X antes do vencimento.'],
-    [gerarUuid(),'Operacional','Processos','Concluído','Ana Souza','2026-07-10','Mapeamento do processo de compras finalizado e homologado pela gerência.'],
-    [gerarUuid(),'Compliance','Auditoria','Em andamento','Beatriz Rocha','2026-08-28','Preparar documentação para a auditoria externa anual.'],
-    [gerarUuid(),'Jurídico','Obrigações','Pendente','Carlos Lima','2026-08-05','Protocolar renovação de licença junto ao órgão regulador.']
+  usuarios: [
+    { usuario:'admin', senha:'admin', papel:'admin' },
+    { usuario:'operador', senha:'operador', papel:'operador' }
   ],
-  Opcoes: [
-    ['Assunto','SubAssunto','Situação','Responsável'],
-    ['Financeiro','Obrigações','Pendente','Ana Souza'],
-    ['Jurídico','Contratos','Em andamento','Carlos Lima'],
-    ['Compliance','Auditoria','Concluído','Beatriz Rocha'],
-    ['Operacional','Processos','Atrasado','Comissão']
+  opcoes: [
+    { categoria:'Assunto', valor:'Administrativo' },
+    { categoria:'Assunto', valor:'Processos' },
+    { categoria:'Assunto', valor:'Fiscal' },
+    { categoria:'Assunto', valor:'Financeiro' },
+    { categoria:'Assunto', valor:'Relatórios' },
+    { categoria:'Situacao', valor:'Pendente' },
+    { categoria:'Situacao', valor:'Em andamento' },
+    { categoria:'Situacao', valor:'Concluído' },
+    { categoria:'Situacao', valor:'Atrasado' },
+    { categoria:'Situacao', valor:'Em processo' },
+    { categoria:'Responsavel', valor:'Amanda' },
+    { categoria:'Responsavel', valor:'Bianca' },
+    { categoria:'Responsavel', valor:'Cláudia' },
+    { categoria:'Responsavel', valor:'Comissão' },
+    { categoria:'SubAssunto', valor:'Balancetes das Empresas do Grupo Hildebrando' },
+    { categoria:'SubAssunto', valor:'Relatório das Restituições Pessoa Física INSS' },
+    { categoria:'SubAssunto', valor:'Relatório Sub-limite Simples Nacional' },
+    { categoria:'SubAssunto', valor:'Relatório de Reuniões Realizadas' },
+    { categoria:'SubAssunto', valor:'Relatório Pró-labore Pago no Ano' }
   ],
-  Usuarios: [
-    ['Usuario','Senha','Papel'],
-    ['admin','admin123','admin'],
-    ['operador','operador123','operador']
+  acompanhamento: [
+    { id: gerarUuid(), assunto:'Financeiro', subassunto:'Balancetes das Empresas do Grupo Hildebrando', situacao:null, responsavel:'Amanda',
+      acao:'[05/2026] Caixa: R$ 60.651,33; pendência de pagamento do pró-labore desde o início da empresa.' },
+    { id: gerarUuid(), assunto:'Relatórios', subassunto:'Relatório das Restituições Pessoa Física INSS', situacao:'Pendente', responsavel:'Amanda',
+      acao:'[03/08/2026] Apresentar relatório das restituições das Pessoas Físicas INSS' },
+    { id: gerarUuid(), assunto:'Relatórios', subassunto:'Relatório Sub-limite Simples Nacional', situacao:'Pendente', responsavel:'Amanda',
+      acao:'[03/08/2026] Pendente de apresentação' },
+    { id: gerarUuid(), assunto:'Relatórios', subassunto:'Relatório de Reuniões Realizadas', situacao:'Em andamento', responsavel:'Bianca',
+      acao:'[27/07/2026] Karen: 03-04-01-01 (férias reuniões) | Bianca: 00-01-02-01-00\n[20/07/2026] Reuniões pendentes atualizadas' },
+    { id: gerarUuid(), assunto:'Relatórios', subassunto:'Relatório Pró-labore Pago no Ano', situacao:'Concluído', responsavel:'Cláudia',
+      acao:'[03/08/2026] Analisar 5 pessoas físicas por semana — 05 analisadas, faltando 13' }
   ]
 };
 
-// ---- versões em JavaScript das mesmas funções do Code.gs, operando sobre DEMO_DB ----
-function demoAbaParaObjetos(nomeAba){
-  const tabela = DEMO_DB[nomeAba];
-  if(!tabela) return [];
-  const cabecalho = tabela[0];
-  const lista = [];
-  for(let i=1;i<tabela.length;i++){
-    const linha = tabela[i];
-    const vazio = linha.every(v=>v===''||v===null||v===undefined);
-    if(vazio) continue;
-    const obj = {};
-    cabecalho.forEach((nome,idx)=>{ if(nome) obj[nome]=linha[idx]; });
-    obj._linha = i+1;
-    lista.push(obj);
-  }
-  return lista;
+// mapa entre o nome "bonito" usado na tela (com acento) e a coluna real no banco
+const MAPA_CAMPOS_DB = { Assunto:'assunto', SubAssunto:'subassunto', Situação:'situacao', Responsável:'responsavel', Ação:'acao' };
+
+function linhaParaRegistro(linha){
+  return {
+    ID: linha.id,
+    Assunto: linha.assunto,
+    SubAssunto: linha.subassunto,
+    Situação: linha.situacao,
+    Responsável: linha.responsavel,
+    Ação: linha.acao
+  };
 }
-function demoListasDeOpcoes(){
-  const tabela = DEMO_DB['Opcoes'];
-  const mapa = {};
-  if(!tabela) return mapa;
-  const cabecalho = tabela[0];
-  cabecalho.forEach((nomeLista,col)=>{
-    if(!nomeLista) return;
-    const opcoes=[];
-    for(let i=1;i<tabela.length;i++){
-      const v = tabela[i][col];
-      if(v!==''&&v!==null&&v!==undefined) opcoes.push(v);
-    }
-    mapa[nomeLista]=opcoes;
+function registroParaLinha(registro){
+  const saida = {};
+  Object.entries(MAPA_CAMPOS_DB).forEach(([bonito, coluna])=>{
+    if(registro[bonito] !== undefined) saida[coluna] = registro[bonito] === '' ? null : registro[bonito];
   });
-  return mapa;
+  return saida;
 }
-function demoTipoColuna(nomeAba, indiceColuna){
-  const tabela = DEMO_DB[nomeAba];
-  let achouData=false, achouNumero=false, achouTexto=false, maiorTexto=0;
-  for(let i=1;i<tabela.length;i++){
-    const v = tabela[i][indiceColuna];
-    if(v===''||v===null||v===undefined) continue;
-    if(typeof v === 'number') achouNumero=true;
-    else if(/^\d{4}-\d{2}-\d{2}$/.test(v)) achouData=true;
-    else { achouTexto=true; maiorTexto=Math.max(maiorTexto, String(v).length); }
-  }
-  if(achouTexto) return maiorTexto>60 ? 'texto_longo' : 'texto';
-  if(achouData) return 'data';
-  if(achouNumero) return 'numero';
-  return 'texto';
+
+// ---- versões em memória das mesmas operações que o banco real faz ----
+function demoOpcoesPorCategoria(categoria){
+  return DEMO_DB.opcoes.filter(o=>o.categoria===categoria).map(o=>o.valor);
 }
-function demoAbasDeDados(){ return Object.keys(DEMO_DB).filter(n=>n!=='Usuarios'&&n!=='Opcoes'); }
-function demoSchema(){
-  const listas = demoListasDeOpcoes();
-  const nomesListas = Object.keys(listas);
-  const abas=[];
-  demoAbasDeDados().forEach(nomeAba=>{
-    const cabecalho = DEMO_DB[nomeAba][0];
-    const colunas=[];
-    cabecalho.forEach((nomeColuna,c)=>{
-      if(!nomeColuna) return;
-      const ehId = c===0 && String(nomeColuna).toUpperCase()==='ID';
-      const info = { nome: nomeColuna, ehId };
-      if(nomesListas.indexOf(nomeColuna)!==-1){ info.tipo='select'; info.opcoes=listas[nomeColuna]; }
-      else if(!ehId){
-        info.tipo=demoTipoColuna(nomeAba,c);
-        // a última coluna da aba é sempre um campo de texto de várias linhas
-        // (ex.: "Plano de Ação"), mesmo que os exemplos atuais sejam curtos.
-        if(c===cabecalho.length-1 && info.tipo!=='data' && info.tipo!=='numero'){ info.tipo='texto_longo'; }
-      }
-      else info.tipo='texto';
-      colunas.push(info);
-    });
-    abas.push({ nome:nomeAba, colunas });
-  });
-  return { ok:true, abas };
+function demoEsquema(){
+  const colunas = [
+    { nome:'Assunto', tipo:'select', opcoes: demoOpcoesPorCategoria('Assunto') },
+    { nome:'SubAssunto', tipo:'select', opcoes: demoOpcoesPorCategoria('SubAssunto') },
+    { nome:'Situação', tipo:'select', opcoes: demoOpcoesPorCategoria('Situacao') },
+    { nome:'Responsável', tipo:'select', opcoes: demoOpcoesPorCategoria('Responsavel') },
+    { nome:'Ação', tipo:'texto_longo' }
+  ];
+  return { ok:true, abas: [{ nome:'Acompanhamento', colunas }] };
 }
 function demoLogin(d){
-  const usuarios = demoAbaParaObjetos('Usuarios');
-  const achou = usuarios.find(u=>String(u.Usuario)===String(d.usuario)&&String(u.Senha)===String(d.senha));
-  return achou ? { ok:true, usuario:achou.Usuario, papel:achou.Papel } : { ok:false, erro:'Usuário ou senha inválidos.' };
+  const usuario = DEMO_DB.usuarios.find(u=>String(u.usuario)===String(d.usuario) && String(u.senha)===String(d.senha));
+  return usuario ? { ok:true, usuario:usuario.usuario, papel:usuario.papel||'operador' } : { ok:false, erro:'Usuário ou senha inválidos.' };
 }
-function demoListar(d){ return { ok:true, registros: demoAbaParaObjetos(d.aba) }; }
+function demoListar(){
+  return { ok:true, registros: DEMO_DB.acompanhamento.map(linhaParaRegistro) };
+}
+function demoVerificarSubAssuntoDuplicado(subassunto, idIgnorar){
+  if(!subassunto) return null;
+  const achou = DEMO_DB.acompanhamento.find(l => l.subassunto===subassunto && l.id!==idIgnorar);
+  return achou ? `Já existe um registro com o SubAssunto "${subassunto}". Edite o registro existente em vez de criar um novo.` : null;
+}
 function demoCriar(d){
-  const tabela = DEMO_DB[d.aba];
-  const cabecalho = tabela[0];
-  const novoId = gerarUuid();
   const registro = d.registro || {};
-  const novaLinha = cabecalho.map((nome,c)=> (c===0 && String(nome).toUpperCase()==='ID') ? novoId : (registro[nome]!==undefined?registro[nome]:''));
-  tabela.push(novaLinha);
-  const criado = {};
-  cabecalho.forEach((n,i)=>criado[n]=novaLinha[i]);
-  return { ok:true, registro:criado };
+  const erro = demoVerificarSubAssuntoDuplicado(registro.SubAssunto, null);
+  if(erro) return { ok:false, erro };
+  const novaLinha = Object.assign({ id: gerarUuid() }, registroParaLinha(registro));
+  DEMO_DB.acompanhamento.push(novaLinha);
+  return { ok:true, registro: linhaParaRegistro(novaLinha) };
 }
 function demoAtualizar(d){
-  const tabela = DEMO_DB[d.aba];
-  const cabecalho = tabela[0];
-  for(let i=1;i<tabela.length;i++){
-    if(String(tabela[i][0])===String(d.id)){
-      cabecalho.forEach((nome,c)=>{ if(c>0 && d.registro[nome]!==undefined) tabela[i][c]=d.registro[nome]; });
-      return { ok:true };
-    }
+  const linha = DEMO_DB.acompanhamento.find(l=>l.id===d.id);
+  if(!linha) return { ok:false, erro:'Registro não encontrado.' };
+  const registro = d.registro || {};
+  if(registro.SubAssunto !== undefined && String(registro.SubAssunto) !== String(linha.subassunto)){
+    const erro = demoVerificarSubAssuntoDuplicado(registro.SubAssunto, d.id);
+    if(erro) return { ok:false, erro };
   }
-  return { ok:false, erro:'Registro não encontrado.' };
+  Object.assign(linha, registroParaLinha(registro));
+  return { ok:true };
 }
 function demoExcluir(d){
-  const tabela = DEMO_DB[d.aba];
-  for(let i=1;i<tabela.length;i++){
-    if(String(tabela[i][0])===String(d.id)){ tabela.splice(i,1); return { ok:true }; }
-  }
-  return { ok:false, erro:'Registro não encontrado.' };
+  const idx = DEMO_DB.acompanhamento.findIndex(l=>l.id===d.id);
+  if(idx===-1) return { ok:false, erro:'Registro não encontrado.' };
+  DEMO_DB.acompanhamento.splice(idx,1);
+  return { ok:true };
 }
 function demoTrocarSenha(d){
-  if(!d.novaSenha || String(d.novaSenha).length < 4){
-    return { ok:false, erro:'A nova senha precisa ter pelo menos 4 caracteres.' };
-  }
-  const tabela = DEMO_DB['Usuarios'];
-  const cabecalho = tabela[0];
-  const idxUsuario = cabecalho.indexOf('Usuario');
-  const idxSenha = cabecalho.indexOf('Senha');
-  for(let i=1;i<tabela.length;i++){
-    if(String(tabela[i][idxUsuario])===String(d.usuario) && String(tabela[i][idxSenha])===String(d.senhaAtual)){
-      tabela[i][idxSenha] = d.novaSenha;
-      return { ok:true };
-    }
-  }
-  return { ok:false, erro:'Senha atual incorreta.' };
+  if(!d.novaSenha || String(d.novaSenha).length < 4) return { ok:false, erro:'A nova senha precisa ter pelo menos 4 caracteres.' };
+  const usuario = DEMO_DB.usuarios.find(u=>String(u.usuario)===String(d.usuario) && String(u.senha)===String(d.senhaAtual));
+  if(!usuario) return { ok:false, erro:'Senha atual incorreta.' };
+  usuario.senha = d.novaSenha;
+  return { ok:true };
 }
 function demoDashboard(){
-  const estrutura = demoSchema().abas;
-  const resultado = {};
-  estrutura.forEach(infoAba=>{
-    const registros = demoAbaParaObjetos(infoAba.nome);
-    const distrib = {};
-    infoAba.colunas.forEach(col=>{
-      if(col.tipo!=='select') return;
-      const contagem = {};
-      col.opcoes.forEach(op=>contagem[op]=0);
-      registros.forEach(r=>{ const v=r[col.nome]; if(v!==undefined&&v!=='') contagem[v]=(contagem[v]||0)+1; });
-      distrib[col.nome]=contagem;
-    });
-    resultado[infoAba.nome] = { total: registros.length, distribuicoes: distrib };
+  const infoAba = demoEsquema().abas[0];
+  const registros = DEMO_DB.acompanhamento.map(linhaParaRegistro);
+  const distribuicoes = {};
+  let colunaHistorico=null, colunaSubAssunto=null;
+  infoAba.colunas.forEach(c=>{
+    if(c.tipo==='texto_longo') colunaHistorico=c;
+    if(normalizarBusca(c.nome)==='subassunto') colunaSubAssunto=c;
+    if(c.tipo!=='select') return;
+    const contagem={}; c.opcoes.forEach(op=>contagem[op]=0);
+    registros.forEach(r=>{ const v=r[c.nome]; if(v) contagem[v]=(contagem[v]||0)+1; });
+    distribuicoes[c.nome]=contagem;
   });
-  return { ok:true, painel: resultado, geradoEm: new Date().toISOString() };
+  let porSubAssunto=null;
+  if(colunaSubAssunto && colunaHistorico){
+    porSubAssunto={};
+    registros.forEach(r=>{
+      const v=r[colunaSubAssunto.nome]; if(!v) return;
+      if(!porSubAssunto[v]) porSubAssunto[v]={registros:0,acoes:0};
+      porSubAssunto[v].registros+=1;
+      const h=r[colunaHistorico.nome];
+      if(h) porSubAssunto[v].acoes += String(h).split('\n').filter(l=>l.trim()!=='').length;
+    });
+  }
+  return { ok:true, painel:{ Acompanhamento: { total: registros.length, distribuicoes, porSubAssunto } } };
 }
 
 /* ============================================================================
-   CHAMADA ÚNICA DE API — usa a planilha real se CONFIG.API_URL estiver
+   CONEXÃO REAL COM O SUPABASE
+   ========================================================================== */
+let _clienteSupabase = null;
+function clienteSupabase(){
+  if(!_clienteSupabase){
+    _clienteSupabase = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+  }
+  return _clienteSupabase;
+}
+
+async function supabaseEsquema(){
+  const { data, error } = await clienteSupabase().from('opcoes').select('categoria, valor').order('valor');
+  if(error) return { ok:false, erro:'Falha ao carregar opções: ' + error.message };
+  const mapa = {};
+  data.forEach(r=>{ (mapa[r.categoria] = mapa[r.categoria]||[]).push(r.valor); });
+  const colunas = [
+    { nome:'Assunto', tipo:'select', opcoes: mapa['Assunto']||[] },
+    { nome:'SubAssunto', tipo:'select', opcoes: mapa['SubAssunto']||[] },
+    { nome:'Situação', tipo:'select', opcoes: mapa['Situacao']||[] },
+    { nome:'Responsável', tipo:'select', opcoes: mapa['Responsavel']||[] },
+    { nome:'Ação', tipo:'texto_longo' }
+  ];
+  return { ok:true, abas: [{ nome:'Acompanhamento', colunas }] };
+}
+async function supabaseLogin(d){
+  const { data, error } = await clienteSupabase().from('usuarios').select('usuario, papel')
+    .eq('usuario', d.usuario).eq('senha', d.senha).maybeSingle();
+  if(error) return { ok:false, erro:'Falha de conexão com o banco: ' + error.message };
+  if(!data) return { ok:false, erro:'Usuário ou senha inválidos.' };
+  return { ok:true, usuario:data.usuario, papel:data.papel||'operador' };
+}
+async function supabaseListar(){
+  const { data, error } = await clienteSupabase().from('acompanhamento').select('*');
+  if(error) return { ok:false, erro:'Falha ao listar: ' + error.message };
+  return { ok:true, registros: data.map(linhaParaRegistro) };
+}
+async function supabaseVerificarSubAssuntoDuplicado(subassunto, idIgnorar){
+  if(!subassunto) return null;
+  let consulta = clienteSupabase().from('acompanhamento').select('id').eq('subassunto', subassunto);
+  if(idIgnorar) consulta = consulta.neq('id', idIgnorar);
+  const { data, error } = await consulta;
+  if(error) return null; // não bloqueia por falha na checagem; deixa o salvar seguir e reportar o erro dele
+  return (data && data.length>0)
+    ? `Já existe um registro com o SubAssunto "${subassunto}". Edite o registro existente em vez de criar um novo.`
+    : null;
+}
+async function supabaseCriar(d){
+  const registro = d.registro || {};
+  const erroDuplicado = await supabaseVerificarSubAssuntoDuplicado(registro.SubAssunto, null);
+  if(erroDuplicado) return { ok:false, erro:erroDuplicado };
+  const { data, error } = await clienteSupabase().from('acompanhamento').insert(registroParaLinha(registro)).select().single();
+  if(error) return { ok:false, erro:'Falha ao criar: ' + error.message };
+  return { ok:true, registro: linhaParaRegistro(data) };
+}
+async function supabaseAtualizar(d){
+  const registro = d.registro || {};
+  if(registro.SubAssunto !== undefined){
+    const { data: atual } = await clienteSupabase().from('acompanhamento').select('subassunto').eq('id', d.id).maybeSingle();
+    if(atual && String(atual.subassunto) !== String(registro.SubAssunto)){
+      const erroDuplicado = await supabaseVerificarSubAssuntoDuplicado(registro.SubAssunto, d.id);
+      if(erroDuplicado) return { ok:false, erro:erroDuplicado };
+    }
+  }
+  const { error } = await clienteSupabase().from('acompanhamento').update(registroParaLinha(registro)).eq('id', d.id);
+  if(error) return { ok:false, erro:'Falha ao atualizar: ' + error.message };
+  return { ok:true };
+}
+async function supabaseExcluir(d){
+  const { error } = await clienteSupabase().from('acompanhamento').delete().eq('id', d.id);
+  if(error) return { ok:false, erro:'Falha ao excluir: ' + error.message };
+  return { ok:true };
+}
+async function supabaseTrocarSenha(d){
+  if(!d.novaSenha || String(d.novaSenha).length < 4) return { ok:false, erro:'A nova senha precisa ter pelo menos 4 caracteres.' };
+  const { data, error } = await clienteSupabase().from('usuarios').select('usuario')
+    .eq('usuario', d.usuario).eq('senha', d.senhaAtual).maybeSingle();
+  if(error) return { ok:false, erro:'Falha de conexão com o banco: ' + error.message };
+  if(!data) return { ok:false, erro:'Senha atual incorreta.' };
+  const { error: erroUpdate } = await clienteSupabase().from('usuarios').update({ senha: d.novaSenha }).eq('usuario', d.usuario);
+  if(erroUpdate) return { ok:false, erro:'Falha ao trocar senha: ' + erroUpdate.message };
+  return { ok:true };
+}
+async function supabaseDashboard(){
+  const respostaEsquema = await supabaseEsquema();
+  if(!respostaEsquema.ok) return respostaEsquema;
+  const infoAba = respostaEsquema.abas[0];
+  const { data, error } = await clienteSupabase().from('acompanhamento').select('*');
+  if(error) return { ok:false, erro:'Falha ao calcular indicadores: ' + error.message };
+  const registros = data.map(linhaParaRegistro);
+
+  const distribuicoes = {};
+  let colunaHistorico=null, colunaSubAssunto=null;
+  infoAba.colunas.forEach(c=>{
+    if(c.tipo==='texto_longo') colunaHistorico=c;
+    if(normalizarBusca(c.nome)==='subassunto') colunaSubAssunto=c;
+    if(c.tipo!=='select') return;
+    const contagem={}; c.opcoes.forEach(op=>contagem[op]=0);
+    registros.forEach(r=>{ const v=r[c.nome]; if(v) contagem[v]=(contagem[v]||0)+1; });
+    distribuicoes[c.nome]=contagem;
+  });
+  let porSubAssunto=null;
+  if(colunaSubAssunto && colunaHistorico){
+    porSubAssunto={};
+    registros.forEach(r=>{
+      const v=r[colunaSubAssunto.nome]; if(!v) return;
+      if(!porSubAssunto[v]) porSubAssunto[v]={registros:0,acoes:0};
+      porSubAssunto[v].registros+=1;
+      const h=r[colunaHistorico.nome];
+      if(h) porSubAssunto[v].acoes += String(h).split('\n').filter(l=>l.trim()!=='').length;
+    });
+  }
+  return { ok:true, painel:{ Acompanhamento: { total: registros.length, distribuicoes, porSubAssunto } } };
+}
+
+/* ============================================================================
+   CHAMADA ÚNICA DE API — usa o Supabase real se CONFIG.SUPABASE_URL estiver
    preenchida, ou os dados de demonstração acima se estiver vazia.
    ========================================================================== */
+async function comTratativaDeErro(fn){
+  try { return await fn(); }
+  catch(erro){ return { ok:false, erro:'Falha de conexão com o banco: ' + (erro && erro.message ? erro.message : erro) }; }
+}
+
 function apiCall(action, data){
   data = data || {};
-  if(!CONFIG.API_URL){
+  if(!CONFIG.SUPABASE_URL){
     return new Promise(resolve=>{
       setTimeout(()=>{
         let resultado;
         switch(action){
           case 'login': resultado = demoLogin(data); break;
-          case 'schema': resultado = demoSchema(); break;
-          case 'listar': resultado = demoListar(data); break;
+          case 'schema': resultado = demoEsquema(); break;
+          case 'listar': resultado = demoListar(); break;
           case 'criar': resultado = demoCriar(data); break;
           case 'atualizar': resultado = demoAtualizar(data); break;
           case 'excluir': resultado = demoExcluir(data); break;
@@ -406,13 +524,17 @@ function apiCall(action, data){
       }, 260); // pequeno atraso só para o estado de "carregando" ficar visível
     });
   }
-  return fetch(CONFIG.API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // evita preflight de CORS com Apps Script
-    body: JSON.stringify({ action, data })
-  })
-  .then(r=>r.json())
-  .catch(()=>({ ok:false, erro:'Falha de conexão com a planilha.' }));
+  switch(action){
+    case 'login': return comTratativaDeErro(()=>supabaseLogin(data));
+    case 'schema': return comTratativaDeErro(()=>supabaseEsquema());
+    case 'listar': return comTratativaDeErro(()=>supabaseListar());
+    case 'criar': return comTratativaDeErro(()=>supabaseCriar(data));
+    case 'atualizar': return comTratativaDeErro(()=>supabaseAtualizar(data));
+    case 'excluir': return comTratativaDeErro(()=>supabaseExcluir(data));
+    case 'dashboard': return comTratativaDeErro(()=>supabaseDashboard());
+    case 'trocarSenha': return comTratativaDeErro(()=>supabaseTrocarSenha(data));
+    default: return Promise.resolve({ ok:false, erro:'Ação desconhecida.' });
+  }
 }
 
 /* ============================================================================
@@ -428,7 +550,9 @@ function estadoInicial(){
     modal:null,
     modalSenha:false, erroSenha:null, sucessoSenha:null,
     filtro:'',
-    enviando:false
+    filtrosColuna:{},
+    enviando:false,
+    expandidos:new Set()
   };
 }
 let estado = estadoInicial();
@@ -462,11 +586,11 @@ function renderizar(){
 function viewLogin(){
   return `
     ${barraProgressoGlobal()}
-    ${!CONFIG.API_URL ? '<div class="faixa-demo">MODO DEMONSTRAÇÃO — dados fictícios, nada é salvo de verdade</div>' : ''}
+    ${!CONFIG.SUPABASE_URL ? '<div class="faixa-demo">MODO DEMONSTRAÇÃO — dados fictícios, nada é salvo de verdade</div>' : ''}
     <div class="tela-login">
       <div class="cartao-login">
         <div class="selo">Painel</div>
-        <h1>Acompanhamentos</h1>
+        <h1>Acompanhamento de Assuntos</h1>
         <p class="subtitulo">Entre com seu usuário para começar.</p>
         <form onsubmit="app.entrar(event)">
           <label>Usuário
@@ -478,7 +602,7 @@ function viewLogin(){
           ${estado.erroLogin ? `<div class="aviso-erro">${escapeHtml(estado.erroLogin)}</div>` : ''}
           <button type="submit" class="botao-primario" ${estado.enviando?'disabled':''}>${estado.enviando?'Entrando…':'Entrar'}</button>
         </form>
-        ${!CONFIG.API_URL ? `<div class="dica-demo">Usuários de teste: <code>admin / admin123</code> (acesso completo) ou <code>operador / operador123</code> (só lança dados).</div>` : ''}
+        ${!CONFIG.SUPABASE_URL ? `<div class="dica-demo">Usuários de teste: <code>admin / admin</code> (acesso completo) ou <code>operador / operador</code> (só lança dados).</div>` : ''}
       </div>
     </div>`;
 }
@@ -488,9 +612,9 @@ function viewShell(){
   return `
     <div class="app-shell">
       ${barraProgressoGlobal()}
-      ${!CONFIG.API_URL ? '<div class="faixa-demo">MODO DEMONSTRAÇÃO — dados fictícios, nada é salvo de verdade</div>' : ''}
+      ${!CONFIG.SUPABASE_URL ? '<div class="faixa-demo">MODO DEMONSTRAÇÃO — dados fictícios, nada é salvo de verdade</div>' : ''}
       <header class="topo">
-        <div class="marca"><span class="marca-selo">✓</span> Acompanhamentos</div>
+        <div class="marca"><span class="marca-selo">✓</span> Acompanhamento de Assuntos</div>
         <div class="usuario-info">
           <span class="cracha cracha-${escapeHtml(estado.papel)}">${escapeHtml(estado.papel)}</span>
           <span>${escapeHtml(estado.usuario)}</span>
@@ -539,6 +663,18 @@ function filtrarContagemPositiva(contagem){
   return resultado;
 }
 
+function listaFracoesHTML(porSubAssunto){
+  const entradas = Object.entries(porSubAssunto||{}).filter(([,v])=>v.registros>0);
+  if(entradas.length===0) return '';
+  return `<div class="lista-fracoes">
+    ${entradas.map(([rotulo,v])=>`
+      <div class="linha-fracao">
+        <span class="rotulo-fracao">${escapeHtml(rotulo)}</span>
+        <span class="valor-fracao mono">${v.registros} / ${v.acoes}</span>
+      </div>`).join('')}
+  </div>`;
+}
+
 function viewDashboard(){
   const painel = estado.painel || {};
   const todasAsAbas = Object.keys(painel);
@@ -546,6 +682,17 @@ function viewDashboard(){
 
   const cartoesGraficos = abasComDados.map(nome =>
     Object.keys(painel[nome].distribuicoes||{}).map(nomeColuna=>{
+      // a coluna SubAssunto tem seu próprio card no formato x/y (registros / ações),
+      // em vez do gráfico de barras genérico (que corta nomes longos e não mostra ações)
+      if(nomeColuna.toLowerCase()==='subassunto' && painel[nome].porSubAssunto){
+        const corpo = listaFracoesHTML(painel[nome].porSubAssunto);
+        if(!corpo) return '';
+        return `<div class="cartao-grafico">
+          <h3>${escapeHtml(nome)} — ${escapeHtml(nomeColuna)}</h3>
+          <p class="legenda-fracoes">registros / ações</p>
+          ${corpo}
+        </div>`;
+      }
       const contagem = filtrarContagemPositiva(painel[nome].distribuicoes[nomeColuna]);
       if(Object.keys(contagem).length===0) return ''; // nada lançado nessa lista ainda: não mostra o card
       return `<div class="cartao-grafico">
@@ -605,19 +752,79 @@ function celulaFormatada(coluna, valor){
   return escapeHtml(valor);
 }
 
+function renderizarLinhaAcao(linha){
+  const m = /^(\[\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}\])\s*(.*)$/.exec(linha);
+  if(m){
+    return `<div class="linha-acao"><span class="carimbo-data-acao">${escapeHtml(m[1])}</span><span class="texto-acao">${escapeHtml(m[2])}</span></div>`;
+  }
+  return `<div class="linha-acao"><span class="texto-acao">${escapeHtml(linha)}</span></div>`;
+}
+
+function celulaAcaoFormatada(coluna, reg){
+  const valor = reg[coluna.nome];
+  if(!valor) return '<span class="vazio-inline">—</span>';
+  const linhas = String(valor).split('\n').filter(l=>l.length>0);
+  if(linhas.length===0) return '<span class="vazio-inline">—</span>';
+  if(linhas.length <= 2){
+    return `<div class="lista-acoes">${linhas.map(renderizarLinhaAcao).join('')}</div>`;
+  }
+  const expandido = estado.expandidos.has(String(reg.ID));
+  const linhasParaMostrar = expandido ? linhas : linhas.slice(-2);
+  const restantes = linhas.length - 2;
+  return `<div class="lista-acoes">${linhasParaMostrar.map(renderizarLinhaAcao).join('')}</div>
+    <button type="button" class="link-ver-mais" onclick="app.alternarExpandir('${escapeHtml(reg.ID)}')">
+      ${expandido ? 'ver menos' : `ver mais (${restantes} ${restantes===1?'ação anterior':'ações anteriores'})`}
+    </button>`;
+}
+
 function normalizarBusca(v){
   return String(v==null?'':v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 }
 
+function extrairMomentoRecente(reg, infoAba){
+  // usa a data/hora da última ação lançada no histórico como critério de "mais recente".
+  // registros sem nenhuma ação com data/hora ficam no final da lista.
+  const colunaHistorico = infoAba.colunas.find(c=>c.tipo==='texto_longo');
+  if(colunaHistorico && reg[colunaHistorico.nome]){
+    const linhas = String(reg[colunaHistorico.nome]).split('\n').filter(l=>l.trim()!=='');
+    const ultimaLinha = linhas[linhas.length-1] || '';
+    const m = /\[(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})\]/.exec(ultimaLinha);
+    if(m) return new Date(Number(m[3]), Number(m[2])-1, Number(m[1]), Number(m[4]), Number(m[5])).getTime();
+  }
+  return -Infinity;
+}
+
+function calcularLargurasColunas(colunas){
+  const indiceAcao = colunas.findIndex(c=>c.tipo==='texto_longo');
+  if(indiceAcao===-1){
+    const larguraIgual = (100/colunas.length).toFixed(2)+'%';
+    return colunas.map(()=>larguraIgual);
+  }
+  const larguraAcao = 40; // % priorizado para a coluna de Ação
+  const outras = colunas.length - 1;
+  const larguraOutras = outras>0 ? ((100-larguraAcao)/outras).toFixed(2) : '0';
+  return colunas.map((c,i)=> i===indiceAcao ? larguraAcao+'%' : larguraOutras+'%');
+}
+
+function valoresDistintos(registros, nomeColuna){
+  const set = new Set();
+  registros.forEach(r=>{ const v=r[nomeColuna]; if(v) set.add(v); });
+  return Array.from(set).sort((a,b)=>a.localeCompare(b,'pt-BR'));
+}
+
 function viewTabela(infoAba){
-  const todosRegistros = estado.cache[infoAba.nome] || [];
+  const todosRegistros = (estado.cache[infoAba.nome] || []).slice()
+    .sort((a,b) => extrairMomentoRecente(b, infoAba) - extrairMomentoRecente(a, infoAba));
   const colunas = infoAba.colunas.filter(c=>!c.ehId);
   const podeExcluir = estado.papel === 'admin';
+  const colunasFiltraveis = colunas.filter(c=>c.tipo==='select');
 
   const termo = normalizarBusca(estado.filtro).trim();
-  const registros = !termo ? todosRegistros : todosRegistros.filter(reg =>
-    colunas.some(c => normalizarBusca(reg[c.nome]).includes(termo))
-  );
+  const filtrosAtivos = Object.entries(estado.filtrosColuna).filter(([,v])=>v);
+  const registros = todosRegistros.filter(reg=>{
+    if(termo && !colunas.some(c => normalizarBusca(reg[c.nome]).includes(termo))) return false;
+    return filtrosAtivos.every(([nomeCol,valor]) => String(reg[nomeCol])===String(valor));
+  });
 
   return `
     <div class="cabecalho-conteudo">
@@ -630,16 +837,31 @@ function viewTabela(infoAba){
     ${estado.erroAtualizacao ? `<div class="aviso-discreto">${escapeHtml(estado.erroAtualizacao)}</div>` : ''}
     <div class="barra-busca">
       <input type="text" id="buscaTabela" placeholder="🔎 Localizar um registro já preenchido (busca em todas as colunas)…" value="${escapeHtml(estado.filtro)}" oninput="app.filtrarTabela(this.value)">
-      ${termo ? `<span class="contagem-busca">${registros.length} de ${todosRegistros.length}</span>` : ''}
+      ${(termo || filtrosAtivos.length>0) ? `<span class="contagem-busca">${registros.length} de ${todosRegistros.length}</span>` : ''}
     </div>
+    ${colunasFiltraveis.length>0 ? `<div class="barra-filtros">
+      ${colunasFiltraveis.map(c=>{
+        const valorAtual = estado.filtrosColuna[c.nome] || '';
+        const opcoesPresentes = valoresDistintos(todosRegistros, c.nome);
+        return `<select onchange="app.filtrarPorColuna('${escapeHtml(c.nome)}', this.value)">
+          <option value="">${escapeHtml(c.nome)} — todos</option>
+          ${opcoesPresentes.map(op=>`<option value="${escapeHtml(op)}" ${op===valorAtual?'selected':''}>${escapeHtml(op)}</option>`).join('')}
+        </select>`;
+      }).join('')}
+      ${filtrosAtivos.length>0 ? `<button type="button" class="botao-secundario" onclick="app.limparFiltrosColuna()">Limpar filtros</button>` : ''}
+    </div>` : ''}
     <div class="area-tabela">
       <table class="tabela-ledger">
+        <colgroup>
+          ${calcularLargurasColunas(colunas).map(w=>`<col style="width:${w}">`).join('')}
+          <col style="width:84px">
+        </colgroup>
         <thead><tr>${colunas.map(c=>`<th>${escapeHtml(c.nome)}</th>`).join('')}<th></th></tr></thead>
         <tbody>
-          ${registros.length===0 ? `<tr><td colspan="${colunas.length+1}" class="vazio">${termo ? 'Nenhum registro encontrado para essa busca.' : 'Nenhum registro ainda. Use "Novo registro" para começar.'}</td></tr>` :
+          ${registros.length===0 ? `<tr><td colspan="${colunas.length+1}" class="vazio">${(termo||filtrosAtivos.length>0) ? 'Nenhum registro encontrado para esse filtro.' : 'Nenhum registro ainda. Use "Novo registro" para começar.'}</td></tr>` :
             registros.map(reg=>`
             <tr>
-              ${colunas.map(c=>`<td>${celulaFormatada(c, reg[c.nome])}</td>`).join('')}
+              ${colunas.map(c=> c.tipo==='texto_longo' ? `<td>${celulaAcaoFormatada(c, reg)}</td>` : `<td>${celulaFormatada(c, reg[c.nome])}</td>`).join('')}
               <td class="celula-acoes">
                 <button class="botao-icone" title="Editar / acrescentar ação" onclick="app.abrirEditar('${escapeHtml(infoAba.nome)}','${escapeHtml(reg.ID)}')">✎</button>
                 ${podeExcluir ? `<button class="botao-icone perigo" title="Excluir" onclick="app.excluirRegistro('${escapeHtml(infoAba.nome)}','${escapeHtml(reg.ID)}')">🗑</button>` : ''}
@@ -669,16 +891,13 @@ function campoFormulario(coluna, valorAtual, indice, todasColunas, somenteLeitur
   if(coluna.tipo==='numero') return `<label>${rotulo}<input type="number" step="any" id="${id}" value="${escapeHtml(valorAtual)}" ${desabilitado}></label>`;
   if(coluna.tipo==='data') return `<label>${rotulo}<input type="text" id="${id}" inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa" value="${escapeHtml(formatarDataBR(valorAtual))}" oninput="app.mascararData(this)" ${desabilitado}></label>`;
   if(coluna.tipo==='texto_longo'){
-    const colunaResponsavel = localizarColunaResponsavel(todasColunas);
+    const podeEditarTextoLivre = estado.papel === 'admin';
     return `<label>${rotulo}
-        <textarea id="${id}" rows="6" class="textarea-somente-leitura" readonly placeholder="O histórico aparece aqui — use os campos abaixo para adicionar uma nova ação.">${escapeHtml(valorAtual||'')}</textarea>
+        <textarea id="${id}" rows="6" class="${podeEditarTextoLivre?'':'textarea-somente-leitura'}" ${podeEditarTextoLivre?'':'readonly'} placeholder="${podeEditarTextoLivre?'Histórico de ações — você pode editar livremente aqui.':'O histórico aparece aqui — use os campos abaixo para adicionar uma nova ação.'}">${escapeHtml(valorAtual||'')}</textarea>
       </label>
       <div class="ferramenta-historico">
-        ${colunaResponsavel ? `<select id="${id}_responsavelEntrada">
-          <option value="">Responsável por esta ação…</option>
-          ${colunaResponsavel.opcoes.map(op=>`<option value="${escapeHtml(op)}">${escapeHtml(op)}</option>`).join('')}
-        </select>` : ''}
         <input type="text" id="${id}_novaEntrada" placeholder="Nova ação realizada agora…">
+        <input type="text" id="${id}_comissaoEntrada" placeholder="Comissão — nomes das pessoas envolvidas nesta ação (opcional)">
         <button type="button" class="botao-secundario" onclick="app.adicionarEntradaHistorico('${id}')">+ Adicionar ao histórico</button>
       </div>`;
   }
@@ -775,6 +994,7 @@ const app = {
   selecionarAba(nome){
     estado.abaAtiva = nome;
     estado.filtro = '';
+    estado.filtrosColuna = {};
     estado.erroAtualizacao = null;
     renderizar();
     app.atualizarDados();
@@ -789,6 +1009,22 @@ const app = {
       campoBusca.focus();
       campoBusca.setSelectionRange(posicaoCursor, posicaoCursor);
     }
+  },
+
+  filtrarPorColuna(nomeColuna, valor){
+    estado.filtrosColuna = { ...estado.filtrosColuna, [nomeColuna]: valor };
+    renderizar();
+  },
+
+  limparFiltrosColuna(){
+    estado.filtrosColuna = {};
+    renderizar();
+  },
+
+  alternarExpandir(id){
+    if(estado.expandidos.has(id)) estado.expandidos.delete(id);
+    else estado.expandidos.add(id);
+    renderizar();
   },
 
   async atualizarDados(){
@@ -848,17 +1084,17 @@ const app = {
   adicionarEntradaHistorico(idCampo){
     const campoNovaEntrada = document.getElementById(idCampo+'_novaEntrada');
     const areaTexto = document.getElementById(idCampo);
-    const campoResponsavel = document.getElementById(idCampo+'_responsavelEntrada');
+    const campoComissao = document.getElementById(idCampo+'_comissaoEntrada');
     const texto = campoNovaEntrada.value.trim();
     if(!texto) { campoNovaEntrada.focus(); return; }
     const agora = new Date();
     const dataHora = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
-    const responsavel = campoResponsavel ? campoResponsavel.value : '';
-    const prefixoResponsavel = responsavel ? ` (${responsavel})` : '';
-    const linhaNova = `[${dataHora}]${prefixoResponsavel} ${texto}`;
+    const comissao = campoComissao ? campoComissao.value.trim() : '';
+    const sufixoComissao = comissao ? ` — Comissão: ${comissao}` : '';
+    const linhaNova = `[${dataHora}] ${texto}${sufixoComissao}`;
     areaTexto.value = areaTexto.value ? (areaTexto.value + '\n' + linhaNova) : linhaNova;
     campoNovaEntrada.value = '';
-    if(campoResponsavel) campoResponsavel.value = '';
+    if(campoComissao) campoComissao.value = '';
     areaTexto.scrollTop = areaTexto.scrollHeight;
     campoNovaEntrada.focus();
   },
