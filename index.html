@@ -727,6 +727,24 @@ function estadoInicial(){
 }
 let estado = estadoInicial();
 
+// ---- Sessão: guarda quem está logado para não perder o login ao atualizar
+// a página (F5). Usa sessionStorage (dura enquanto a aba estiver aberta;
+// fecha a aba/navegador e a sessão se encerra sozinha).
+const CHAVE_SESSAO = 'acompanhamentus_sessao';
+function salvarSessao(usuario, papel){
+  try { sessionStorage.setItem(CHAVE_SESSAO, JSON.stringify({ usuario, papel })); }
+  catch(erro){ /* navegador sem sessionStorage disponível: painel continua funcionando, só não guarda a sessão */ }
+}
+function lerSessaoSalva(){
+  try {
+    const bruto = sessionStorage.getItem(CHAVE_SESSAO);
+    return bruto ? JSON.parse(bruto) : null;
+  } catch(erro){ return null; }
+}
+function limparSessaoSalva(){
+  try { sessionStorage.removeItem(CHAVE_SESSAO); } catch(erro){ /* nada a fazer */ }
+}
+
 function escapeHtml(v){
   if(v===undefined||v===null) return '';
   return String(v).replace(/[&<>"']/g, s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
@@ -1246,6 +1264,7 @@ const app = {
       if(respSchema.ok){
         estado.schema = respSchema.abas;
         estado.abaAtiva = 'dashboard';
+        salvarSessao(estado.usuario, estado.papel);
         renderizar();
         app.atualizarDados();
       } else {
@@ -1262,6 +1281,7 @@ const app = {
 
   sair(){
     if(estado.timerAuto) clearInterval(estado.timerAuto);
+    limparSessaoSalva();
     estado = estadoInicial();
     renderizar();
   },
@@ -1569,7 +1589,35 @@ const app = {
 };
 window.app = app;
 
-renderizar();
+/* ============================================================================
+   INICIALIZAÇÃO — se já houver uma sessão salva (usuário logado antes de
+   atualizar a página), restaura ela em vez de voltar para a tela de login.
+   ========================================================================== */
+(async function iniciarApp(){
+  const sessaoSalva = lerSessaoSalva();
+  if(!sessaoSalva || !sessaoSalva.usuario){
+    renderizar();
+    return;
+  }
+  estado.usuario = sessaoSalva.usuario;
+  estado.papel = sessaoSalva.papel;
+  estado.carregando = true;
+  renderizar(); // mostra a tela do painel já "logada" enquanto os dados carregam
+  const respSchema = await apiCall('schema', {});
+  estado.carregando = false;
+  if(respSchema.ok){
+    estado.schema = respSchema.abas;
+    estado.abaAtiva = 'dashboard';
+    renderizar();
+    app.atualizarDados();
+  } else {
+    // não foi possível confirmar a sessão (banco fora do ar, etc.) — volta pro login
+    limparSessaoSalva();
+    estado = estadoInicial();
+    estado.erroLogin = 'Não foi possível restaurar sua sessão. Entre novamente.';
+    renderizar();
+  }
+})();
 </script>
 </body>
 </html>
