@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Painel de Acompanhamento</title>
+<title>Parakos</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -247,7 +247,7 @@ const CONFIG = {
 // Nome e versão exibidos no rodapé — atualize a versão sempre que fizer uma
 // mudança que valha marcar (não é automático, é só um texto fixo).
 const SISTEMA = {
-  NOME: 'Acompanhamentus',
+  NOME: 'Parakos',
   VERSAO: 'v1.0.0',
   DESENVOLVEDOR: 'DSP Group',
   INSTAGRAM: 'dspgrupointegra',
@@ -783,7 +783,7 @@ function viewLogin(){
       <div class="area-login-centro">
         <div class="cartao-login">
           <div class="selo">Painel</div>
-          <h1>Acompanhamento de Assuntos</h1>
+          <h1>Parakos</h1>
           <p class="subtitulo">Entre com seu usuário para começar.</p>
           <form onsubmit="app.entrar(event)">
             <label>Usuário
@@ -809,7 +809,7 @@ function viewShell(){
       ${barraProgressoGlobal()}
       ${!CONFIG.SUPABASE_URL ? '<div class="faixa-demo">MODO DEMONSTRAÇÃO — dados fictícios, nada é salvo de verdade</div>' : ''}
       <header class="topo">
-        <div class="marca"><span class="marca-selo">✓</span> Acompanhamento de Assuntos</div>
+        <div class="marca"><span class="marca-selo">✓</span> Parakos</div>
         <div class="usuario-info">
           <span class="cracha cracha-${escapeHtml(estado.papel)}">${escapeHtml(estado.papel)}</span>
           <span>${escapeHtml(estado.usuario)}</span>
