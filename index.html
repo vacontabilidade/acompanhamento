@@ -43,7 +43,8 @@
   a{ color:var(--accent-deep); }
 
   /* ---------- LOGIN ---------- */
-  .tela-login{ min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; }
+  .tela-login{ min-height:100vh; display:flex; flex-direction:column; }
+  .area-login-centro{ flex:1; display:flex; align-items:center; justify-content:center; padding:24px; }
   .cartao-login{
     background:var(--card); border:1px solid var(--rule); border-radius:var(--raio);
     box-shadow:var(--sombra); padding:40px 36px; width:100%; max-width:380px; position:relative;
@@ -77,6 +78,13 @@
   .aviso-sucesso{ background:#E5EFE9; color:var(--good); border:1px solid #B9D9C7; border-radius:6px; padding:8px 10px; font-size:13px; }
   .dica-demo{ margin-top:18px; font-size:12px; color:var(--ink-soft); background:var(--paper-deep); border-radius:6px; padding:10px 12px; }
   .dica-demo code{ background:#fff; padding:1px 5px; border-radius:3px; }
+  .rodape-app{
+    text-align:center; font-size:11px; color:var(--ink-soft); padding:10px 14px;
+    background:var(--paper-deep); border-top:1px solid var(--rule);
+    font-family:'IBM Plex Mono', monospace; letter-spacing:.02em;
+  }
+  .rodape-app a{ color:var(--accent-deep); text-decoration:none; }
+  .rodape-app a:hover{ text-decoration:underline; }
   .faixa-demo{
     background:var(--accent); color:#241a05; text-align:center; font-size:13px; font-weight:600;
     padding:8px 12px; letter-spacing:.02em;
@@ -148,6 +156,21 @@
   }
   .rotulo-kpi{ font-size:13px; color:var(--ink-soft); font-weight:500; }
   .cartao-grafico{ background:var(--card); border:1px solid var(--rule); border-radius:var(--raio); padding:18px 20px; margin-bottom:16px; box-shadow:var(--sombra); }
+
+  /* ---------- CONFIGURAÇÕES (admin) ---------- */
+  .cartao-config{ background:var(--card); border:1px solid var(--rule); border-radius:var(--raio); padding:20px 22px; margin-bottom:20px; box-shadow:var(--sombra); max-width:640px; }
+  .abas-config{ display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap; }
+  .aba-config{ background:var(--paper-deep); border:1px solid var(--rule); border-radius:20px; padding:6px 14px; font-size:13px; color:var(--ink-soft); font-weight:500; }
+  .aba-config.ativa{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  .lista-opcoes-config{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; min-height:32px; }
+  .chip-opcao{ display:inline-flex; align-items:center; gap:6px; background:var(--paper-deep); border:1px solid var(--rule); border-radius:20px; padding:5px 8px 5px 12px; font-size:13px; }
+  .chip-opcao button{ background:none; border:none; color:var(--bad); font-size:15px; line-height:1; cursor:pointer; padding:0 4px; }
+  .form-nova-opcao{ display:flex; gap:8px; }
+  .form-nova-opcao input{ flex:1; }
+  .lista-campos-config{ display:flex; flex-direction:column; gap:8px; }
+  .linha-campo-config{ display:flex; align-items:center; gap:12px; padding:8px 0; border-bottom:1px solid var(--paper-deep); }
+  .nome-campo-config{ font-weight:600; flex:0 0 140px; }
+  .tipo-campo-config{ flex:1; font-size:13px; color:var(--ink-soft); }
   .cartao-grafico h3{ font-size:15px; margin-bottom:12px; }
   .legenda-fracoes{ font-size:11px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.06em; margin:-6px 0 10px; }
   .lista-fracoes{ display:flex; flex-direction:column; gap:7px; max-width:420px; }
@@ -221,6 +244,16 @@ const CONFIG = {
   INTERVALOS_AUTO: [1, 5, 10]
 };
 
+// Nome e versão exibidos no rodapé — atualize a versão sempre que fizer uma
+// mudança que valha marcar (não é automático, é só um texto fixo).
+const SISTEMA = {
+  NOME: 'Acompanhamentus',
+  VERSAO: 'v1.0.0',
+  DESENVOLVEDOR: 'DSP Group',
+  INSTAGRAM: 'dspgrupointegra',
+  INSTAGRAM_URL: 'https://www.instagram.com/dspgrupointegra/'
+};
+
 /* ============================================================================
    MODO DEMONSTRAÇÃO — banco fictício em memória (mesma forma do banco real
    no Supabase: usuários, opções por categoria e os registros do
@@ -259,25 +292,32 @@ let DEMO_DB = {
     { categoria:'SubAssunto', valor:'Relatório de Reuniões Realizadas' },
     { categoria:'SubAssunto', valor:'Relatório Pró-labore Pago no Ano' }
   ],
+  // campos criados pelo admin (Configurações → Campos personalizados)
+  camposPersonalizados: [
+    { id: 1, nome:'Prazo', tipo:'data', opcoes:[], ordem:1 }
+  ],
   acompanhamento: [
     { id: gerarUuid(), assunto:'Financeiro', subassunto:'Balancetes das Empresas do Grupo Hildebrando', situacao:null, responsavel:'Amanda',
-      acao:'[05/2026] Caixa: R$ 60.651,33; pendência de pagamento do pró-labore desde o início da empresa.' },
+      acao:'[05/2026] Caixa: R$ 60.651,33; pendência de pagamento do pró-labore desde o início da empresa.', campos_extras:{ Prazo:'2026-09-01' } },
     { id: gerarUuid(), assunto:'Relatórios', subassunto:'Relatório das Restituições Pessoa Física INSS', situacao:'Pendente', responsavel:'Amanda',
-      acao:'[03/08/2026] Apresentar relatório das restituições das Pessoas Físicas INSS' },
+      acao:'[03/08/2026] Apresentar relatório das restituições das Pessoas Físicas INSS', campos_extras:{} },
     { id: gerarUuid(), assunto:'Relatórios', subassunto:'Relatório Sub-limite Simples Nacional', situacao:'Pendente', responsavel:'Amanda',
-      acao:'[03/08/2026] Pendente de apresentação' },
+      acao:'[03/08/2026] Pendente de apresentação', campos_extras:{} },
     { id: gerarUuid(), assunto:'Relatórios', subassunto:'Relatório de Reuniões Realizadas', situacao:'Em andamento', responsavel:'Bianca',
-      acao:'[27/07/2026] Karen: 03-04-01-01 (férias reuniões) | Bianca: 00-01-02-01-00\n[20/07/2026] Reuniões pendentes atualizadas' },
+      acao:'[27/07/2026] Karen: 03-04-01-01 (férias reuniões) | Bianca: 00-01-02-01-00\n[20/07/2026] Reuniões pendentes atualizadas', campos_extras:{} },
     { id: gerarUuid(), assunto:'Relatórios', subassunto:'Relatório Pró-labore Pago no Ano', situacao:'Concluído', responsavel:'Cláudia',
-      acao:'[03/08/2026] Analisar 5 pessoas físicas por semana — 05 analisadas, faltando 13' }
+      acao:'[03/08/2026] Analisar 5 pessoas físicas por semana — 05 analisadas, faltando 13', campos_extras:{} }
   ]
 };
 
-// mapa entre o nome "bonito" usado na tela (com acento) e a coluna real no banco
+// mapa entre o nome "bonito" usado na tela (com acento) e a coluna real no banco.
+// os campos personalizados (criados pelo admin) NÃO entram aqui — eles ficam
+// guardados dentro da coluna "campos_extras" (formato flexível), não como
+// colunas fixas, porque podem ser criados/removidos a qualquer momento.
 const MAPA_CAMPOS_DB = { Assunto:'assunto', SubAssunto:'subassunto', Situação:'situacao', Responsável:'responsavel', Ação:'acao' };
 
-function linhaParaRegistro(linha){
-  return {
+function linhaParaRegistro(linha, camposPersonalizados){
+  const registro = {
     ID: linha.id,
     Assunto: linha.assunto,
     SubAssunto: linha.subassunto,
@@ -285,12 +325,20 @@ function linhaParaRegistro(linha){
     Responsável: linha.responsavel,
     Ação: linha.acao
   };
+  const extras = linha.campos_extras || {};
+  (camposPersonalizados||[]).forEach(c=>{ registro[c.nome] = extras[c.nome] !== undefined ? extras[c.nome] : ''; });
+  return registro;
 }
-function registroParaLinha(registro){
+function registroParaLinha(registro, camposPersonalizados){
   const saida = {};
   Object.entries(MAPA_CAMPOS_DB).forEach(([bonito, coluna])=>{
     if(registro[bonito] !== undefined) saida[coluna] = registro[bonito] === '' ? null : registro[bonito];
   });
+  if(camposPersonalizados && camposPersonalizados.length){
+    const extras = {};
+    camposPersonalizados.forEach(c=>{ if(registro[c.nome] !== undefined) extras[c.nome] = registro[c.nome]; });
+    saida.campos_extras = extras;
+  }
   return saida;
 }
 
@@ -299,11 +347,13 @@ function demoOpcoesPorCategoria(categoria){
   return DEMO_DB.opcoes.filter(o=>o.categoria===categoria).map(o=>o.valor);
 }
 function demoEsquema(){
+  const camposPersonalizados = DEMO_DB.camposPersonalizados.slice().sort((a,b)=>a.ordem-b.ordem);
   const colunas = [
     { nome:'Assunto', tipo:'select', opcoes: demoOpcoesPorCategoria('Assunto') },
     { nome:'SubAssunto', tipo:'select', opcoes: demoOpcoesPorCategoria('SubAssunto') },
     { nome:'Situação', tipo:'select', opcoes: demoOpcoesPorCategoria('Situacao') },
     { nome:'Responsável', tipo:'select', opcoes: demoOpcoesPorCategoria('Responsavel') },
+    ...camposPersonalizados.map(c=>({ nome:c.nome, tipo:c.tipo, opcoes:c.opcoes||[], personalizado:true, idPersonalizado:c.id })),
     { nome:'Ação', tipo:'texto_longo' }
   ];
   return { ok:true, abas: [{ nome:'Acompanhamento', colunas }] };
@@ -313,7 +363,7 @@ function demoLogin(d){
   return usuario ? { ok:true, usuario:usuario.usuario, papel:usuario.papel||'operador' } : { ok:false, erro:'Usuário ou senha inválidos.' };
 }
 function demoListar(){
-  return { ok:true, registros: DEMO_DB.acompanhamento.map(linhaParaRegistro) };
+  return { ok:true, registros: DEMO_DB.acompanhamento.map(l=>linhaParaRegistro(l, DEMO_DB.camposPersonalizados)) };
 }
 function demoVerificarSubAssuntoDuplicado(subassunto, idIgnorar){
   if(!subassunto) return null;
@@ -324,9 +374,9 @@ function demoCriar(d){
   const registro = d.registro || {};
   const erro = demoVerificarSubAssuntoDuplicado(registro.SubAssunto, null);
   if(erro) return { ok:false, erro };
-  const novaLinha = Object.assign({ id: gerarUuid() }, registroParaLinha(registro));
+  const novaLinha = Object.assign({ id: gerarUuid() }, registroParaLinha(registro, DEMO_DB.camposPersonalizados));
   DEMO_DB.acompanhamento.push(novaLinha);
-  return { ok:true, registro: linhaParaRegistro(novaLinha) };
+  return { ok:true, registro: linhaParaRegistro(novaLinha, DEMO_DB.camposPersonalizados) };
 }
 function demoAtualizar(d){
   const linha = DEMO_DB.acompanhamento.find(l=>l.id===d.id);
@@ -336,7 +386,7 @@ function demoAtualizar(d){
     const erro = demoVerificarSubAssuntoDuplicado(registro.SubAssunto, d.id);
     if(erro) return { ok:false, erro };
   }
-  Object.assign(linha, registroParaLinha(registro));
+  Object.assign(linha, registroParaLinha(registro, DEMO_DB.camposPersonalizados));
   return { ok:true };
 }
 function demoExcluir(d){
@@ -354,7 +404,7 @@ function demoTrocarSenha(d){
 }
 function demoDashboard(){
   const infoAba = demoEsquema().abas[0];
-  const registros = DEMO_DB.acompanhamento.map(linhaParaRegistro);
+  const registros = DEMO_DB.acompanhamento.map(l=>linhaParaRegistro(l, DEMO_DB.camposPersonalizados));
   const distribuicoes = {};
   let colunaHistorico=null, colunaSubAssunto=null;
   infoAba.colunas.forEach(c=>{
@@ -379,6 +429,50 @@ function demoDashboard(){
   return { ok:true, painel:{ Acompanhamento: { total: registros.length, distribuicoes, porSubAssunto } } };
 }
 
+// ---- Configurações (admin): respostas das listas + campos personalizados ----
+function demoListarOpcoes(){
+  const porCategoria = {};
+  DEMO_DB.opcoes.forEach(o=>{ (porCategoria[o.categoria]=porCategoria[o.categoria]||[]).push(o.valor); });
+  return { ok:true, porCategoria };
+}
+function demoAdicionarOpcao(d){
+  if(!d.categoria || !d.valor) return { ok:false, erro:'Preencha a categoria e o valor.' };
+  const jaExiste = DEMO_DB.opcoes.some(o=>o.categoria===d.categoria && String(o.valor).toLowerCase()===String(d.valor).toLowerCase());
+  if(jaExiste) return { ok:false, erro:'Essa opção já existe nessa lista.' };
+  DEMO_DB.opcoes.push({ categoria:d.categoria, valor:d.valor });
+  return { ok:true };
+}
+function demoRemoverOpcao(d){
+  const idx = DEMO_DB.opcoes.findIndex(o=>o.categoria===d.categoria && o.valor===d.valor);
+  if(idx===-1) return { ok:false, erro:'Opção não encontrada.' };
+  DEMO_DB.opcoes.splice(idx,1);
+  return { ok:true };
+}
+function demoListarCampos(){
+  return { ok:true, campos: DEMO_DB.camposPersonalizados.slice().sort((a,b)=>a.ordem-b.ordem) };
+}
+function demoCriarCampo(d){
+  const nome = (d.nome||'').trim();
+  if(!nome) return { ok:false, erro:'Dê um nome para o campo.' };
+  const nomesReservados = ['id','assunto','subassunto','situação','responsável','ação'];
+  if(nomesReservados.includes(nome.toLowerCase())) return { ok:false, erro:'Esse nome já é usado por um campo padrão do sistema.' };
+  const jaExiste = DEMO_DB.camposPersonalizados.some(c=>c.nome.toLowerCase()===nome.toLowerCase());
+  if(jaExiste) return { ok:false, erro:'Já existe um campo personalizado com esse nome.' };
+  const novo = {
+    id: (DEMO_DB.camposPersonalizados.reduce((m,c)=>Math.max(m,c.id),0))+1,
+    nome, tipo:d.tipo, opcoes: d.opcoes||[],
+    ordem: DEMO_DB.camposPersonalizados.length
+  };
+  DEMO_DB.camposPersonalizados.push(novo);
+  return { ok:true, campo:novo };
+}
+function demoExcluirCampo(d){
+  const idx = DEMO_DB.camposPersonalizados.findIndex(c=>c.id===d.id);
+  if(idx===-1) return { ok:false, erro:'Campo não encontrado.' };
+  DEMO_DB.camposPersonalizados.splice(idx,1);
+  return { ok:true };
+}
+
 /* ============================================================================
    CONEXÃO REAL COM O SUPABASE
    ========================================================================== */
@@ -390,16 +484,23 @@ function clienteSupabase(){
   return _clienteSupabase;
 }
 
+async function supabaseCamposPersonalizados(){
+  const { data, error } = await clienteSupabase().from('campos_personalizados').select('*').order('ordem');
+  if(error) return [];
+  return data.map(c=>({ id:c.id, nome:c.nome, tipo:c.tipo, opcoes:c.opcoes||[] }));
+}
 async function supabaseEsquema(){
   const { data, error } = await clienteSupabase().from('opcoes').select('categoria, valor').order('valor');
   if(error) return { ok:false, erro:'Falha ao carregar opções: ' + error.message };
   const mapa = {};
   data.forEach(r=>{ (mapa[r.categoria] = mapa[r.categoria]||[]).push(r.valor); });
+  const camposPersonalizados = await supabaseCamposPersonalizados();
   const colunas = [
     { nome:'Assunto', tipo:'select', opcoes: mapa['Assunto']||[] },
     { nome:'SubAssunto', tipo:'select', opcoes: mapa['SubAssunto']||[] },
     { nome:'Situação', tipo:'select', opcoes: mapa['Situacao']||[] },
     { nome:'Responsável', tipo:'select', opcoes: mapa['Responsavel']||[] },
+    ...camposPersonalizados.map(c=>({ nome:c.nome, tipo:c.tipo, opcoes:c.opcoes, personalizado:true, idPersonalizado:c.id })),
     { nome:'Ação', tipo:'texto_longo' }
   ];
   return { ok:true, abas: [{ nome:'Acompanhamento', colunas }] };
@@ -412,9 +513,10 @@ async function supabaseLogin(d){
   return { ok:true, usuario:data.usuario, papel:data.papel||'operador' };
 }
 async function supabaseListar(){
+  const camposPersonalizados = await supabaseCamposPersonalizados();
   const { data, error } = await clienteSupabase().from('acompanhamento').select('*');
   if(error) return { ok:false, erro:'Falha ao listar: ' + error.message };
-  return { ok:true, registros: data.map(linhaParaRegistro) };
+  return { ok:true, registros: data.map(l=>linhaParaRegistro(l, camposPersonalizados)) };
 }
 async function supabaseVerificarSubAssuntoDuplicado(subassunto, idIgnorar){
   if(!subassunto) return null;
@@ -430,9 +532,10 @@ async function supabaseCriar(d){
   const registro = d.registro || {};
   const erroDuplicado = await supabaseVerificarSubAssuntoDuplicado(registro.SubAssunto, null);
   if(erroDuplicado) return { ok:false, erro:erroDuplicado };
-  const { data, error } = await clienteSupabase().from('acompanhamento').insert(registroParaLinha(registro)).select().single();
+  const camposPersonalizados = await supabaseCamposPersonalizados();
+  const { data, error } = await clienteSupabase().from('acompanhamento').insert(registroParaLinha(registro, camposPersonalizados)).select().single();
   if(error) return { ok:false, erro:'Falha ao criar: ' + error.message };
-  return { ok:true, registro: linhaParaRegistro(data) };
+  return { ok:true, registro: linhaParaRegistro(data, camposPersonalizados) };
 }
 async function supabaseAtualizar(d){
   const registro = d.registro || {};
@@ -443,7 +546,8 @@ async function supabaseAtualizar(d){
       if(erroDuplicado) return { ok:false, erro:erroDuplicado };
     }
   }
-  const { error } = await clienteSupabase().from('acompanhamento').update(registroParaLinha(registro)).eq('id', d.id);
+  const camposPersonalizados = await supabaseCamposPersonalizados();
+  const { error } = await clienteSupabase().from('acompanhamento').update(registroParaLinha(registro, camposPersonalizados)).eq('id', d.id);
   if(error) return { ok:false, erro:'Falha ao atualizar: ' + error.message };
   return { ok:true };
 }
@@ -466,9 +570,10 @@ async function supabaseDashboard(){
   const respostaEsquema = await supabaseEsquema();
   if(!respostaEsquema.ok) return respostaEsquema;
   const infoAba = respostaEsquema.abas[0];
+  const camposPersonalizados = infoAba.colunas.filter(c=>c.personalizado);
   const { data, error } = await clienteSupabase().from('acompanhamento').select('*');
   if(error) return { ok:false, erro:'Falha ao calcular indicadores: ' + error.message };
-  const registros = data.map(linhaParaRegistro);
+  const registros = data.map(l=>linhaParaRegistro(l, camposPersonalizados));
 
   const distribuicoes = {};
   let colunaHistorico=null, colunaSubAssunto=null;
@@ -492,6 +597,53 @@ async function supabaseDashboard(){
     });
   }
   return { ok:true, painel:{ Acompanhamento: { total: registros.length, distribuicoes, porSubAssunto } } };
+}
+
+// ---- Configurações (admin): respostas das listas + campos personalizados ----
+async function supabaseListarOpcoes(){
+  const { data, error } = await clienteSupabase().from('opcoes').select('categoria, valor').order('valor');
+  if(error) return { ok:false, erro:'Falha ao carregar opções: ' + error.message };
+  const porCategoria = {};
+  data.forEach(r=>{ (porCategoria[r.categoria]=porCategoria[r.categoria]||[]).push(r.valor); });
+  return { ok:true, porCategoria };
+}
+async function supabaseAdicionarOpcao(d){
+  if(!d.categoria || !d.valor) return { ok:false, erro:'Preencha a categoria e o valor.' };
+  const { error } = await clienteSupabase().from('opcoes').insert({ categoria:d.categoria, valor:d.valor });
+  if(error){
+    if(error.code === '23505') return { ok:false, erro:'Essa opção já existe nessa lista.' };
+    return { ok:false, erro:'Falha ao adicionar: ' + error.message };
+  }
+  return { ok:true };
+}
+async function supabaseRemoverOpcao(d){
+  const { error } = await clienteSupabase().from('opcoes').delete().eq('categoria', d.categoria).eq('valor', d.valor);
+  if(error) return { ok:false, erro:'Falha ao remover: ' + error.message };
+  return { ok:true };
+}
+async function supabaseListarCampos(){
+  const { data, error } = await clienteSupabase().from('campos_personalizados').select('*').order('ordem');
+  if(error) return { ok:false, erro:'Falha ao carregar campos: ' + error.message };
+  return { ok:true, campos:data };
+}
+async function supabaseCriarCampo(d){
+  const nome = (d.nome||'').trim();
+  if(!nome) return { ok:false, erro:'Dê um nome para o campo.' };
+  const nomesReservados = ['id','assunto','subassunto','situação','responsável','ação'];
+  if(nomesReservados.includes(nome.toLowerCase())) return { ok:false, erro:'Esse nome já é usado por um campo padrão do sistema.' };
+  const { count } = await clienteSupabase().from('campos_personalizados').select('*', { count:'exact', head:true });
+  const { data, error } = await clienteSupabase().from('campos_personalizados')
+    .insert({ nome, tipo:d.tipo, opcoes:d.opcoes||[], ordem: count||0 }).select().single();
+  if(error){
+    if(error.code === '23505') return { ok:false, erro:'Já existe um campo personalizado com esse nome.' };
+    return { ok:false, erro:'Falha ao criar campo: ' + error.message };
+  }
+  return { ok:true, campo:data };
+}
+async function supabaseExcluirCampo(d){
+  const { error } = await clienteSupabase().from('campos_personalizados').delete().eq('id', d.id);
+  if(error) return { ok:false, erro:'Falha ao excluir campo: ' + error.message };
+  return { ok:true };
 }
 
 /* ============================================================================
@@ -518,6 +670,12 @@ function apiCall(action, data){
           case 'excluir': resultado = demoExcluir(data); break;
           case 'dashboard': resultado = demoDashboard(); break;
           case 'trocarSenha': resultado = demoTrocarSenha(data); break;
+          case 'listarOpcoes': resultado = demoListarOpcoes(); break;
+          case 'adicionarOpcao': resultado = demoAdicionarOpcao(data); break;
+          case 'removerOpcao': resultado = demoRemoverOpcao(data); break;
+          case 'listarCampos': resultado = demoListarCampos(); break;
+          case 'criarCampo': resultado = demoCriarCampo(data); break;
+          case 'excluirCampo': resultado = demoExcluirCampo(data); break;
           default: resultado = { ok:false, erro:'Ação desconhecida.' };
         }
         resolve(resultado);
@@ -533,6 +691,12 @@ function apiCall(action, data){
     case 'excluir': return comTratativaDeErro(()=>supabaseExcluir(data));
     case 'dashboard': return comTratativaDeErro(()=>supabaseDashboard());
     case 'trocarSenha': return comTratativaDeErro(()=>supabaseTrocarSenha(data));
+    case 'listarOpcoes': return comTratativaDeErro(()=>supabaseListarOpcoes());
+    case 'adicionarOpcao': return comTratativaDeErro(()=>supabaseAdicionarOpcao(data));
+    case 'removerOpcao': return comTratativaDeErro(()=>supabaseRemoverOpcao(data));
+    case 'listarCampos': return comTratativaDeErro(()=>supabaseListarCampos());
+    case 'criarCampo': return comTratativaDeErro(()=>supabaseCriarCampo(data));
+    case 'excluirCampo': return comTratativaDeErro(()=>supabaseExcluirCampo(data));
     default: return Promise.resolve({ ok:false, erro:'Ação desconhecida.' });
   }
 }
@@ -552,7 +716,13 @@ function estadoInicial(){
     filtro:'',
     filtrosColuna:{},
     enviando:false,
-    expandidos:new Set()
+    expandidos:new Set(),
+    configCategoria:'Assunto',
+    configOpcoes:null,
+    configCampos:null,
+    configNovaOpcao:'',
+    configErro:null,
+    modalNovoCampo:null
   };
 }
 let estado = estadoInicial();
@@ -582,33 +752,40 @@ function renderizar(){
   document.getElementById('app').innerHTML = estado.usuario ? viewShell() : viewLogin();
 }
 
+function rodapeApp(){
+  return `<footer class="rodape-app">${escapeHtml(SISTEMA.NOME)} ${escapeHtml(SISTEMA.VERSAO)} • Desenvolvido por ${escapeHtml(SISTEMA.DESENVOLVEDOR)} • <a href="${escapeHtml(SISTEMA.INSTAGRAM_URL)}" target="_blank" rel="noopener">@${escapeHtml(SISTEMA.INSTAGRAM)}</a></footer>`;
+}
+
 /* ---------- VIEWS ---------- */
 function viewLogin(){
   return `
     ${barraProgressoGlobal()}
     ${!CONFIG.SUPABASE_URL ? '<div class="faixa-demo">MODO DEMONSTRAÇÃO — dados fictícios, nada é salvo de verdade</div>' : ''}
     <div class="tela-login">
-      <div class="cartao-login">
-        <div class="selo">Painel</div>
-        <h1>Acompanhamento de Assuntos</h1>
-        <p class="subtitulo">Entre com seu usuário para começar.</p>
-        <form onsubmit="app.entrar(event)">
-          <label>Usuário
-            <input type="text" id="campoUsuario" autocomplete="username" required ${estado.enviando?'disabled':''}>
-          </label>
-          <label>Senha
-            <input type="password" id="campoSenha" autocomplete="current-password" required ${estado.enviando?'disabled':''}>
-          </label>
-          ${estado.erroLogin ? `<div class="aviso-erro">${escapeHtml(estado.erroLogin)}</div>` : ''}
-          <button type="submit" class="botao-primario" ${estado.enviando?'disabled':''}>${estado.enviando?'Entrando…':'Entrar'}</button>
-        </form>
-        ${!CONFIG.SUPABASE_URL ? `<div class="dica-demo">Usuários de teste: <code>admin / admin</code> (acesso completo) ou <code>operador / operador</code> (só lança dados).</div>` : ''}
+      <div class="area-login-centro">
+        <div class="cartao-login">
+          <div class="selo">Painel</div>
+          <h1>Acompanhamento de Assuntos</h1>
+          <p class="subtitulo">Entre com seu usuário para começar.</p>
+          <form onsubmit="app.entrar(event)">
+            <label>Usuário
+              <input type="text" id="campoUsuario" autocomplete="username" required ${estado.enviando?'disabled':''}>
+            </label>
+            <label>Senha
+              <input type="password" id="campoSenha" autocomplete="current-password" required ${estado.enviando?'disabled':''}>
+            </label>
+            ${estado.erroLogin ? `<div class="aviso-erro">${escapeHtml(estado.erroLogin)}</div>` : ''}
+            <button type="submit" class="botao-primario" ${estado.enviando?'disabled':''}>${estado.enviando?'Entrando…':'Entrar'}</button>
+          </form>
+          ${!CONFIG.SUPABASE_URL ? `<div class="dica-demo">Usuários de teste: <code>admin / admin</code> (acesso completo) ou <code>operador / operador</code> (só lança dados).</div>` : ''}
+        </div>
       </div>
+      ${rodapeApp()}
     </div>`;
 }
 
 function viewShell(){
-  const abaAtual = estado.abaAtiva === 'dashboard' ? null : (estado.schema||[]).find(a=>a.nome===estado.abaAtiva);
+  const abaAtual = (estado.abaAtiva === 'dashboard' || estado.abaAtiva === 'configuracoes') ? null : (estado.schema||[]).find(a=>a.nome===estado.abaAtiva);
   return `
     <div class="app-shell">
       ${barraProgressoGlobal()}
@@ -626,13 +803,16 @@ function viewShell(){
         <nav class="lateral">
           ${(estado.schema||[]).map(a=>`<button class="aba-lateral ${estado.abaAtiva===a.nome?'ativa':''}" onclick="app.selecionarAba('${escapeHtml(a.nome)}')">📁 ${escapeHtml(a.nome)}</button>`).join('')}
           <button class="aba-lateral ${estado.abaAtiva==='dashboard'?'ativa':''}" onclick="app.selecionarAba('dashboard')">📊 Dashboard</button>
+          ${estado.papel==='admin' ? `<button class="aba-lateral ${estado.abaAtiva==='configuracoes'?'ativa':''}" onclick="app.abrirConfiguracoes()">⚙️ Configurações</button>` : ''}
         </nav>
         <main class="conteudo">
-          ${estado.abaAtiva==='dashboard' ? viewDashboard() : (abaAtual ? viewTabela(abaAtual) : '<p>Aba não encontrada.</p>')}
+          ${estado.abaAtiva==='dashboard' ? viewDashboard() : estado.abaAtiva==='configuracoes' ? viewConfiguracoes() : (abaAtual ? viewTabela(abaAtual) : '<p>Aba não encontrada.</p>')}
         </main>
       </div>
+      ${rodapeApp()}
       ${estado.modal ? viewModal() : ''}
       ${estado.modalSenha ? viewModalSenha() : ''}
+      ${estado.modalNovoCampo ? viewModalNovoCampo() : ''}
     </div>`;
 }
 
@@ -951,6 +1131,101 @@ function viewModalSenha(){
 }
 
 /* ============================================================================
+   CONFIGURAÇÕES (só admin) — gerenciar respostas das listas e campos
+   personalizados
+   ========================================================================== */
+const CATEGORIAS_OPCOES = [
+  { chave:'Assunto', rotulo:'Assunto' },
+  { chave:'SubAssunto', rotulo:'SubAssunto' },
+  { chave:'Situacao', rotulo:'Situação' },
+  { chave:'Responsavel', rotulo:'Responsável' }
+];
+
+function viewConfiguracoes(){
+  const opcoes = estado.configOpcoes || {};
+  const categoriaAtual = estado.configCategoria;
+  const listaAtual = opcoes[categoriaAtual] || [];
+  const campos = estado.configCampos || [];
+
+  return `
+    <div class="cabecalho-conteudo">
+      <h2>Configurações</h2>
+    </div>
+    ${estado.configErro ? `<div class="aviso-discreto">${escapeHtml(estado.configErro)}</div>` : ''}
+
+    <div class="cartao-config">
+      <h3>Respostas das listas</h3>
+      <p class="subtitulo" style="margin:0 0 14px">Adicione ou remova as opções que aparecem nos menus suspensos.</p>
+      <div class="abas-config">
+        ${CATEGORIAS_OPCOES.map(c=>`<button class="aba-config ${categoriaAtual===c.chave?'ativa':''}" onclick="app.selecionarCategoriaConfig('${c.chave}')">${escapeHtml(c.rotulo)}</button>`).join('')}
+      </div>
+      <div class="lista-opcoes-config">
+        ${listaAtual.length===0 ? '<p class="vazio-inline">Nenhuma opção cadastrada ainda.</p>' : listaAtual.map(op=>`
+          <span class="chip-opcao">
+            ${escapeHtml(op)}
+            <button type="button" title="Remover" onclick="app.removerOpcaoConfig('${categoriaAtual}', ${JSON.stringify(op)})">×</button>
+          </span>`).join('')}
+      </div>
+      <form class="form-nova-opcao" onsubmit="app.adicionarOpcaoConfig(event)">
+        <input type="text" id="novaOpcaoTexto" placeholder="Nova opção para ${escapeHtml(CATEGORIAS_OPCOES.find(c=>c.chave===categoriaAtual).rotulo)}…" required>
+        <button type="submit" class="botao-secundario" ${estado.enviando?'disabled':''}>+ Adicionar</button>
+      </form>
+    </div>
+
+    <div class="cartao-config">
+      <h3>Campos personalizados</h3>
+      <p class="subtitulo" style="margin:0 0 14px">Crie campos novos (lista, texto, número ou data) para o formulário do Acompanhamento. Os 5 campos padrão do sistema não podem ser removidos.</p>
+      <div class="lista-campos-config">
+        ${campos.length===0 ? '<p class="vazio-inline">Nenhum campo personalizado ainda.</p>' : campos.map(c=>`
+          <div class="linha-campo-config">
+            <span class="nome-campo-config">${escapeHtml(c.nome)}</span>
+            <span class="tipo-campo-config">${escapeHtml(rotuloTipoCampo(c.tipo))}${c.tipo==='select' ? ` (${(c.opcoes||[]).length} opções)` : ''}</span>
+            <button type="button" class="botao-icone perigo" title="Excluir campo" onclick="app.excluirCampoConfig(${c.id}, '${escapeHtml(c.nome)}')">🗑</button>
+          </div>`).join('')}
+      </div>
+      <button type="button" class="botao-primario" style="margin-top:12px" onclick="app.abrirNovoCampo()">+ Novo campo</button>
+    </div>
+  `;
+}
+
+function rotuloTipoCampo(tipo){
+  return { select:'Lista de opções', texto:'Texto', texto_longo:'Texto longo', numero:'Número', data:'Data' }[tipo] || tipo;
+}
+
+function viewModalNovoCampo(){
+  const tipo = estado.modalNovoCampo.tipo || 'select';
+  return `
+    <div class="sobreposicao" onclick="app.fecharModalSeClicarForaNovoCampo(event)">
+      <div class="modal-caixa">
+        <h3>Novo campo personalizado</h3>
+        <form onsubmit="app.salvarNovoCampo(event)">
+          <label>Nome do campo<input type="text" id="nomeNovoCampo" placeholder="ex.: Prazo, Prioridade..." required></label>
+          <label>Tipo
+            <select id="tipoNovoCampo" onchange="app.mudarTipoNovoCampo(this.value)">
+              <option value="select" ${tipo==='select'?'selected':''}>Lista de opções</option>
+              <option value="texto" ${tipo==='texto'?'selected':''}>Texto</option>
+              <option value="texto_longo" ${tipo==='texto_longo'?'selected':''}>Texto longo (várias linhas)</option>
+              <option value="numero" ${tipo==='numero'?'selected':''}>Número</option>
+              <option value="data" ${tipo==='data'?'selected':''}>Data</option>
+            </select>
+          </label>
+          ${tipo==='select' ? `<label>Opções da lista (uma por linha)
+            <textarea id="opcoesNovoCampo" rows="4" placeholder="Baixa
+Média
+Alta"></textarea>
+          </label>` : ''}
+          ${estado.configErro ? `<div class="aviso-erro">${escapeHtml(estado.configErro)}</div>` : ''}
+          ${estado.enviando ? barraProgresso() : ''}
+          <div class="acoes-modal">
+            <button type="button" class="botao-secundario" onclick="app.fecharNovoCampo()" ${estado.enviando?'disabled':''}>Cancelar</button>
+            <button type="submit" class="botao-primario" ${estado.enviando?'disabled':''}>${estado.enviando?'Salvando…':'Criar campo'}</button>
+          </div>
+        </form>
+      </div>
+    </div>`;
+}
+
+/* ============================================================================
    AÇÕES DO PAINEL (chamadas pelos onclick/onsubmit no HTML acima)
    ========================================================================== */
 const app = {
@@ -1180,6 +1455,116 @@ const app = {
       estado.erroSenha = resp.erro || 'Não foi possível alterar a senha.';
       renderizar();
     }
+  },
+
+  /* ---------- Configurações (admin) ---------- */
+  async abrirConfiguracoes(){
+    estado.abaAtiva = 'configuracoes';
+    estado.configErro = null;
+    renderizar();
+    estado.carregando = true;
+    renderizar();
+    const [respOpcoes, respCampos] = await Promise.all([apiCall('listarOpcoes', {}), apiCall('listarCampos', {})]);
+    estado.carregando = false;
+    if(respOpcoes.ok) estado.configOpcoes = respOpcoes.porCategoria;
+    if(respCampos.ok) estado.configCampos = respCampos.campos;
+    if(!respOpcoes.ok || !respCampos.ok) estado.configErro = respOpcoes.erro || respCampos.erro;
+    renderizar();
+  },
+
+  selecionarCategoriaConfig(categoria){
+    estado.configCategoria = categoria;
+    estado.configErro = null;
+    renderizar();
+  },
+
+  async adicionarOpcaoConfig(e){
+    e.preventDefault();
+    const campo = document.getElementById('novaOpcaoTexto');
+    const valor = campo.value.trim();
+    if(!valor) return;
+    estado.enviando = true;
+    renderizar();
+    const resp = await apiCall('adicionarOpcao', { categoria: estado.configCategoria, valor });
+    estado.enviando = false;
+    if(resp.ok){
+      estado.configOpcoes[estado.configCategoria] = [...(estado.configOpcoes[estado.configCategoria]||[]), valor];
+      estado.configErro = null;
+    } else {
+      estado.configErro = resp.erro || 'Não foi possível adicionar a opção.';
+    }
+    renderizar();
+  },
+
+  async removerOpcaoConfig(categoria, valor){
+    if(!confirm(`Remover "${valor}" da lista de ${categoria}? Registros que já usam esse valor não são alterados.`)) return;
+    estado.enviando = true;
+    renderizar();
+    const resp = await apiCall('removerOpcao', { categoria, valor });
+    estado.enviando = false;
+    if(resp.ok){
+      estado.configOpcoes[categoria] = (estado.configOpcoes[categoria]||[]).filter(v=>v!==valor);
+    } else {
+      estado.configErro = resp.erro || 'Não foi possível remover a opção.';
+    }
+    renderizar();
+  },
+
+  abrirNovoCampo(){
+    estado.modalNovoCampo = { tipo:'select' };
+    estado.configErro = null;
+    renderizar();
+  },
+  fecharNovoCampo(){
+    estado.modalNovoCampo = null;
+    renderizar();
+  },
+  fecharModalSeClicarForaNovoCampo(e){
+    if(e.target.classList.contains('sobreposicao')) app.fecharNovoCampo();
+  },
+  mudarTipoNovoCampo(tipo){
+    estado.modalNovoCampo = { tipo };
+    renderizar();
+  },
+  async salvarNovoCampo(e){
+    e.preventDefault();
+    const nome = document.getElementById('nomeNovoCampo').value.trim();
+    const tipo = document.getElementById('tipoNovoCampo').value;
+    let opcoes = [];
+    if(tipo==='select'){
+      const bruto = document.getElementById('opcoesNovoCampo').value;
+      opcoes = bruto.split('\n').map(l=>l.trim()).filter(l=>l.length>0);
+    }
+    estado.enviando = true;
+    renderizar();
+    const resp = await apiCall('criarCampo', { nome, tipo, opcoes });
+    estado.enviando = false;
+    if(resp.ok){
+      estado.modalNovoCampo = null;
+      estado.configErro = null;
+      estado.configCampos = [...(estado.configCampos||[]), resp.campo];
+      const respSchema = await apiCall('schema', {});
+      if(respSchema.ok) estado.schema = respSchema.abas;
+      renderizar();
+    } else {
+      estado.configErro = resp.erro || 'Não foi possível criar o campo.';
+      renderizar();
+    }
+  },
+  async excluirCampoConfig(id, nome){
+    if(!confirm(`Excluir o campo "${nome}"? Os valores já preenchidos nesse campo deixam de aparecer, mas não são apagados do banco.`)) return;
+    estado.enviando = true;
+    renderizar();
+    const resp = await apiCall('excluirCampo', { id });
+    estado.enviando = false;
+    if(resp.ok){
+      estado.configCampos = (estado.configCampos||[]).filter(c=>c.id!==id);
+      const respSchema = await apiCall('schema', {});
+      if(respSchema.ok) estado.schema = respSchema.abas;
+    } else {
+      estado.configErro = resp.erro || 'Não foi possível excluir o campo.';
+    }
+    renderizar();
   }
 };
 window.app = app;
